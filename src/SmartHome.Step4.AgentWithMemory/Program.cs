@@ -26,7 +26,7 @@ builder.Services.AddSingleton<HomeState>();
 var prefPath = Path.Combine(AppContext.BaseDirectory, "preferences.json");
 builder.Services.AddSingleton(new PreferenceStore(prefPath));
 
-builder.AddAIAgent("concierge", (sp, key) =>
+builder.AddAIAgent("concierge-with-memory", (sp, key) =>
 {
     var chat = sp.GetRequiredService<IChatClient>();
     var state = sp.GetRequiredService<HomeState>();

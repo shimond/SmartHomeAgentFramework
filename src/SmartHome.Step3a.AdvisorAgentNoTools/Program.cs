@@ -28,7 +28,7 @@ ChatClientSetup.RegisterAIClient(builder);
 
 // Register the advisor as a keyed AIAgent. It wraps the same IChatClient Step 1 uses, but
 // carries the advisor instructions itself and is given NO tools — it can only give advice.
-builder.AddAIAgent("Advisor", (sp, key) =>
+builder.AddAIAgent("advisor-no-tools", (sp, key) =>
     new ChatClientAgent(sp.GetRequiredService<IChatClient>(), AdvisorInstructions.Text, name: key));
 
 var app = builder.Build();
@@ -42,7 +42,7 @@ app.MapGet("/", () => Results.Content(
 
 // Full response: hand the user message to the agent — the agent supplies the system prompt
 // from its Instructions, so (unlike Step 1) we don't build a System+User message list here.
-app.MapPost("/api/chat", async (ChatRequest req, [FromKeyedServices("Advisor")] AIAgent agent) =>
+app.MapPost("/api/chat", async (ChatRequest req, [FromKeyedServices("advisor-no-tools")] AIAgent agent) =>
 {
     var response = await agent.RunAsync(req.Message);
     return Results.Ok(new { reply = response.Text });
@@ -50,7 +50,7 @@ app.MapPost("/api/chat", async (ChatRequest req, [FromKeyedServices("Advisor")] 
 
 // Streaming: the agent equivalent of Step 1's StreamingWriter — stream the run's text
 // updates straight to the response body, flushing per chunk.
-app.MapPost("/api/stream", async (ChatRequest req, [FromKeyedServices("Advisor")] AIAgent agent,
+app.MapPost("/api/stream", async (ChatRequest req, [FromKeyedServices("advisor-no-tools")] AIAgent agent,
     HttpResponse response, CancellationToken ct) =>
 {
     response.ContentType = "text/plain; charset=utf-8";

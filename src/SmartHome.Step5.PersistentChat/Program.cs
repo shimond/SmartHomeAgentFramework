@@ -46,7 +46,7 @@ builder.Services.AddSingleton<IConversationStore>(sp => sp.GetRequiredService<Po
 // across all sessions and keeps no per-session state, so registering it as a singleton is correct.
 builder.Services.AddSingleton<PostgresChatHistoryProvider>();
 
-builder.AddAIAgent("concierge", (sp, key) =>
+builder.AddAIAgent("concierge-persistent-chat", (sp, key) =>
 {
     var chat = sp.GetRequiredService<IChatClient>();
     var state = sp.GetRequiredService<HomeState>();

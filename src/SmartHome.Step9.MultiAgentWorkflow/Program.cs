@@ -18,10 +18,12 @@ builder.Services.AddSingleton<HomeState>();
 // runtime — but the Endpoint in HttpClientTransportOptions must be a plain http URI.
 builder.Services.AddHttpClient("mcp-energy-server");
 
-// McpToolsProvider does the async MCP handshake in StartAsync (proper IHostedService
-// lifecycle) and makes the tool list available as a singleton before the agent runs.
+// McpToolsProvider does the async MCP handshake LAZILY (on first request) and caches the
+// result. An IHostedService that populated a .Tools property eagerly would race the agent:
+// the energy agent's factory reads the tool list when the agent is built, which can happen
+// before startup finished the handshake — leaving it with 0 tools. Fetching on demand and
+// awaiting the result removes that ordering dependency entirely.
 builder.Services.AddSingleton<McpToolsProvider>();
-builder.Services.AddHostedService(sp => sp.GetRequiredService<McpToolsProvider>());
 
 static ChatClientAgent Specialist(IServiceProvider sp, string name, string instructions, IList<McpClientTool>? energyTools = null)
 {
@@ -33,69 +35,56 @@ static ChatClientAgent Specialist(IServiceProvider sp, string name, string instr
     return new ChatClientAgent(chat, instructions, name, null, tools);
 }
 
-// Wraps an AIAgent as a single AITool another agent can call: the orchestrator passes a
-// natural-language instruction, the specialist runs its own full reasoning/tool loop, and
-// only the final text comes back. This manual wrap always compiles regardless of package
-// version; SOME Agent Framework versions also ship a built-in "agent as tool" helper
-// (look for something like `agent.AsAIFunction()`/`AsAgentTool()` on AIAgent) — if yours
-// has one, prefer it, but this is the guaranteed-to-work fallback for the workshop.
-static AIFunction AsAgentTool(AIAgent agent, string toolName, string description)
-{
-    async Task<string> Invoke(string instruction)
-    {
-        var response = await agent.RunAsync(instruction);
-        return response.Text;
-    }
-    return AIFunctionFactory.Create(Invoke, toolName, description);
-}
-
+// Three specialists, each reporting on ONE domain. In the concurrent briefing below they all
+// receive the SAME prompt at the same time, so each MUST answer only its own slice — otherwise
+// (as a live run showed) they each summarize the whole house and the merged output is redundant
+// and garbled. The instructions are deliberately strict: exactly one short line, prefixed with
+// the domain, mentioning ONLY that domain's devices and nothing else.
 builder.AddAIAgent("security", (sp, key) => Specialist(sp, key,
-    "You handle home SECURITY only: locking the door and arming/disarming the alarm. " +
-    "Unlocking or disarming is sensitive — confirm, call RequestApproval, then act. " +
-    "Ignore comfort and energy requests; leave those to other agents."));
+    "You are the SECURITY reporter. Look ONLY at the door lock and the alarm. " +
+    "Call GetHomeStatus, then reply with EXACTLY ONE short line, starting with 'Security:'. " +
+    "Mention ONLY the lock and alarm state. Do NOT mention lights, thermostat, music, scenes, " +
+    "energy or price — those belong to other reporters. No preamble, no extra sentences."));
 
 builder.AddAIAgent("comfort", (sp, key) => Specialist(sp, key,
-    "You handle COMFORT only: lights, brightness, thermostat, scenes and music. " +
-    "Do not touch locks or the alarm."));
+    "You are the COMFORT reporter. Look ONLY at lights, thermostat, scene and music. " +
+    "Call GetHomeStatus, then reply with EXACTLY ONE short line, starting with 'Comfort:'. " +
+    "Mention ONLY lights/thermostat/scene/music. Do NOT mention the lock, alarm, energy or " +
+    "price — those belong to other reporters. No preamble, no extra sentences."));
 
 builder.AddAIAgent("energy", (sp, key) => Specialist(sp, key,
-    "You handle ENERGY only. Use GetEnergyPriceNow and GetForecast to advise whether now " +
-    "is a good time to run heavy appliances, deferring past evening peaks. You may adjust " +
-    "the thermostat to save energy, but do not change locks or the alarm.",
-    sp.GetRequiredService<McpToolsProvider>().Tools));
+    "You are the ENERGY reporter. Use GetEnergyPriceNow and GetForecast ONLY. " +
+    "Reply with EXACTLY ONE short line, starting with 'Energy:', giving the current price band " +
+    "and whether now is a good time for heavy appliances. Do NOT mention the lock, alarm, " +
+    "lights, thermostat or music — those belong to other reporters. No preamble, no extra sentences.",
+    sp.GetRequiredService<McpToolsProvider>().GetTools().Result));
 
-// --- Variant 1: WORKFLOW — fixed graph, security → comfort → energy, always all three ---
-builder.AddWorkflow("home-ops", (sp, key) =>
+// --- CONCURRENT WORKFLOW — the one shape a for-loop CANNOT replicate. All three specialists
+// run AT THE SAME TIME on the same "home briefing" prompt; the aggregator merges their replies
+// into one report. A for-loop is serial (security THEN comfort THEN energy ≈ 3× the latency);
+// here the wall-clock time is roughly that of the slowest single agent. To match this by hand
+// you'd be writing Task.WhenAll + result-collection + failure isolation yourself — BuildConcurrent
+// is that, declaratively, in one call.
+builder.AddWorkflow("home-briefing", (sp, key) =>
 {
     var security = sp.GetRequiredKeyedService<AIAgent>("security");
     var comfort = sp.GetRequiredKeyedService<AIAgent>("comfort");
     var energy = sp.GetRequiredKeyedService<AIAgent>("energy");
-    return AgentWorkflowBuilder.BuildSequential(key, [security, comfort, energy]);
+
+    // Aggregator (fan-in): stitch each specialist's final line into a single briefing message.
+    // NOTE on DevUI: a workflow run streams every executor's output, so DevUI shows the three
+    // specialist turns (Security:/Comfort:/Energy:) AND this merged message. The merged
+    // "🏠 Home briefing" is the LAST message in the run — that's the full answer to look for.
+    static List<ChatMessage> Merge(IList<List<ChatMessage>> perAgent)
+    {
+        var lines = perAgent
+            .Select(messages => messages.LastOrDefault()?.Text?.Trim())
+            .Where(text => !string.IsNullOrWhiteSpace(text));
+        return [new ChatMessage(ChatRole.Assistant, "🏠 Home briefing:\n- " + string.Join("\n- ", lines))];
+    }
+
+    return AgentWorkflowBuilder.BuildConcurrent(key, [security, comfort, energy], Merge);
 }).AddAsAIAgent();
-
-// --- Variant 2: ORCHESTRATOR AGENT — no graph; the model decides which specialist(s)
-// to call, in what order, and can skip any of them based on what the request actually needs.
-builder.AddAIAgent("home-ops-orchestrator", (sp, key) =>
-{
-    var chat = sp.GetRequiredService<IChatClient>();
-    var security = sp.GetRequiredKeyedService<AIAgent>("security");
-    var comfort = sp.GetRequiredKeyedService<AIAgent>("comfort");
-    var energy = sp.GetRequiredKeyedService<AIAgent>("energy");
-
-    return new ChatClientAgent(chat,
-        """
-        You coordinate three specialists: security, comfort, and energy. For each user
-        request, decide WHICH specialist(s) are actually relevant and call only those —
-        do not call a specialist whose domain the request doesn't touch. You may call
-        them in any order, and more than once if needed. Summarize what happened.
-        """,
-        key, null,
-        [
-            AsAgentTool(security, "AskSecuritySpecialist", "Delegate a security-related instruction (locks, alarm) to the security specialist."),
-            AsAgentTool(comfort, "AskComfortSpecialist", "Delegate a comfort-related instruction (lights, thermostat, scenes, music) to the comfort specialist."),
-            AsAgentTool(energy, "AskEnergySpecialist", "Delegate an energy-related instruction (pricing, scheduling heavy appliances) to the energy specialist."),
-        ]);
-});
 
 var app = builder.Build();
 app.MapDefaultEndpoints();
@@ -106,43 +95,59 @@ if (app.Environment.IsDevelopment())
 app.Run();
 
 /// <summary>
-/// Performs the async MCP handshake during host startup and exposes the tool list.
-/// Using IHostedService ensures proper async lifecycle without blocking or sync-over-async.
+/// Performs the async MCP handshake LAZILY on first use and caches the resulting tool list,
+/// so every agent that asks gets the same fully-populated list. The handshake runs at most
+/// once (guarded by a SemaphoreSlim) however many specialists request the tools. This avoids
+/// the startup race an eager IHostedService has: an agent can be built before startup
+/// finishes the handshake, and would then capture an empty tool list.
 /// </summary>
-sealed class McpToolsProvider(IHttpClientFactory httpClientFactory, IConfiguration configuration) : IHostedService, IAsyncDisposable
+sealed class McpToolsProvider(IHttpClientFactory httpClientFactory, IConfiguration configuration) : IAsyncDisposable
 {
+    private readonly SemaphoreSlim _gate = new(1, 1);
     private McpClient? _mcpClient;
-    public IList<McpClientTool> Tools { get; private set; } = [];
+    private IList<McpClientTool>? _tools;
 
-    public async Task StartAsync(CancellationToken cancellationToken)
+    public async Task<IList<McpClientTool>> GetTools(CancellationToken cancellationToken = default)
     {
-        // Read the real URL Aspire injects via .WithReference(mcpServer) in the AppHost.
-        // Falls back to localhost for running without Aspire.
-        var endpoint =
-            configuration["services:mcp-energy-server:https:0"] ??
-            configuration["services:mcp-energy-server:http:0"] ??
-            "http://localhost:5300";
+        if (_tools is not null) return _tools;
 
-        var httpClient = httpClientFactory.CreateClient("mcp-energy-server");
-        httpClient.BaseAddress = new Uri(endpoint);
+        await _gate.WaitAsync(cancellationToken);
+        try
+        {
+            if (_tools is not null) return _tools;
 
-        _mcpClient = await McpClient.CreateAsync(
-            new HttpClientTransport(
-                new HttpClientTransportOptions { Endpoint = new Uri(endpoint) },
-                httpClient,
-                loggerFactory: null,
-                ownsHttpClient: true),
-            cancellationToken: cancellationToken);
+            // Read the real URL Aspire injects via .WithReference(mcpServer) in the AppHost.
+            // Falls back to localhost for running without Aspire.
+            var endpoint =
+                configuration["services:mcp-energy-server:https:0"] ??
+                configuration["services:mcp-energy-server:http:0"] ??
+                "http://localhost:5300";
 
-        Tools = await _mcpClient.ListToolsAsync(cancellationToken: cancellationToken);
+            var httpClient = httpClientFactory.CreateClient("mcp-energy-server");
+            httpClient.BaseAddress = new Uri(endpoint);
+
+            _mcpClient = await McpClient.CreateAsync(
+                new HttpClientTransport(
+                    new HttpClientTransportOptions { Endpoint = new Uri(endpoint) },
+                    httpClient,
+                    loggerFactory: null,
+                    ownsHttpClient: true),
+                cancellationToken: cancellationToken);
+
+            _tools = await _mcpClient.ListToolsAsync(cancellationToken: cancellationToken);
+            return _tools;
+        }
+        finally
+        {
+            _gate.Release();
+        }
     }
-
-    public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
     public async ValueTask DisposeAsync()
     {
         if (_mcpClient is not null)
             await _mcpClient.DisposeAsync();
+        _gate.Dispose();
     }
 }
 

@@ -1,4 +1,3 @@
-using System.ComponentModel;
 using System.Text.RegularExpressions;
 
 namespace SmartHome.Shared.Rag;
@@ -11,7 +10,7 @@ namespace SmartHome.Shared.Rag;
 /// embedding similarity using Microsoft.Extensions.AI's IEmbeddingGenerator if you want
 /// the production version. The lesson (retrieve THEN ground) is identical either way.
 /// </summary>
-public sealed partial class ManualStore
+public sealed partial class ManualStore : IManualStore
 {
     private readonly List<(string Source, string Chunk)> _chunks = new();
 
@@ -26,10 +25,7 @@ public sealed partial class ManualStore
         }
     }
 
-    [Description("Search the appliance manuals for instructions relevant to the question. " +
-                 "Always call this before answering a 'how do I…' maintenance question, and " +
-                 "ground your answer ONLY in what it returns.")]
-    public string SearchManuals(string query, int topK = 3)
+    public Task<string> SearchManuals(string query, int topK = 3)
     {
         var terms = Tokenize(query);
         var hits = _chunks
@@ -38,8 +34,9 @@ public sealed partial class ManualStore
             .OrderByDescending(x => x.Score)
             .Take(topK)
             .ToList();
-        return hits.Count == 0 ? "No relevant passage found in the manuals."
-                                : string.Join("\n\n", hits.Select(h => $"[{h.Source}] {h.Chunk}"));
+        return Task.FromResult(hits.Count == 0
+            ? "No relevant passage found in the manuals."
+            : string.Join("\n\n", hits.Select(h => $"[{h.Source}] {h.Chunk}")));
     }
 
     private static IEnumerable<string> ChunkByParagraph(string text) =>

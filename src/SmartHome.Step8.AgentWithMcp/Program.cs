@@ -29,7 +29,7 @@ builder.Services.AddSingleton<McpToolsProvider>();
 builder.Services.AddHttpClient("mcp-energy-server");
 
 
-builder.AddAIAgent("concierge",  (sp, key) =>
+builder.AddAIAgent("concierge-with-mcp",  (sp, key) =>
 {
     var chat = sp.GetRequiredService<IChatClient>();
     var state = sp.GetRequiredService<HomeState>();
@@ -41,8 +41,9 @@ builder.AddAIAgent("concierge",  (sp, key) =>
 
     return new ChatClientAgent(chat,
         Agents.HomeAssistanceInstructions +
-            "\nUse GetEnergyPriceNow / GetForecast (from the energy server) before advising " +
-            "whether now is a good time to run heavy appliances.",
+            "\nWhen advising whether now is a good time to run heavy appliances, FIRST call " +
+            "GetHomeStatus to read the current house state, THEN call AdviseEnergyUse passing that " +
+            "status as 'homeStatus'. Use GetEnergyPriceNow / GetForecast for simple price/forecast questions.",
         key, null, tools);
 });
 

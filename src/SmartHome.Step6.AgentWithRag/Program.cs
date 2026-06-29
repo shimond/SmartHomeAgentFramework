@@ -23,16 +23,32 @@ ChatClientSetup.RegisterAIClient(builder);
 builder.Services.AddSingleton<HomeState>();
 
 var manualsPath = Path.Combine(AppContext.BaseDirectory, "Rag", "Manuals");
-builder.Services.AddSingleton(new ManualStore(manualsPath));
 
-builder.AddAIAgent("concierge", (sp, key) =>
+// SmartHome:RagStore picks the retriever: "Keyword" (dependency-free overlap) or
+// "Embedding" (OpenAI embeddings + in-memory cosine similarity). Only the selected
+// implementation is registered, behind the shared IManualStore — the agent below never
+// knows which one it got; it just calls SearchManuals.
+var ragStore = (builder.Configuration["SmartHome:RagStore"] ?? "Embedding").Trim();
+
+if (ragStore.Equals("Embedding", StringComparison.OrdinalIgnoreCase))
+{
+    ChatClientSetup.RegisterEmbeddingGenerator(builder);
+    builder.Services.AddSingleton<IManualStore>(sp => new EmbeddingManualStore(
+        manualsPath,
+        sp.GetRequiredService<IEmbeddingGenerator<string, Embedding<float>>>()));
+}
+else
+{
+    builder.Services.AddSingleton<IManualStore>(new ManualStore(manualsPath));
+}
+
+builder.AddAIAgent("concierge-with-rag", (sp, key) =>
 {
     var chat = sp.GetRequiredService<IChatClient>();
     var state = sp.GetRequiredService<HomeState>();
-    var manuals = sp.GetRequiredService<ManualStore>();
 
     var tools = Agents.ToolsFor(state);
-    tools.Add(AIFunctionFactory.Create(manuals.SearchManuals));
+    tools.Add(AIFunctionFactory.Create(sp.GetRequiredService<IManualStore>().SearchManuals));
 
     return new ChatClientAgent(chat,
         Agents.HomeAssistanceInstructions +

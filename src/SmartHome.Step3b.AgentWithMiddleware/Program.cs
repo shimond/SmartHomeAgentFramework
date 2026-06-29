@@ -42,7 +42,7 @@ ChatClientSetup.RegisterAIClient(builder);
 
 builder.Services.AddSingleton<HomeState>();
 
-builder.AddAIAgent("HomeAssistance", (sp, key) =>
+builder.AddAIAgent("concierge-with-middleware", (sp, key) =>
 {
     var state = sp.GetRequiredService<HomeState>();
     var loggerFactory = sp.GetRequiredService<ILoggerFactory>();

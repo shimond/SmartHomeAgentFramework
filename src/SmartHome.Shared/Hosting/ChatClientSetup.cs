@@ -45,5 +45,15 @@ public static class ChatClientSetup
             throw new InvalidOperationException($"Unknown SmartHome:Provider '{provider}'. Use OpenAI or Ollama.");
         }
     }
-    
+
+    /// <summary>
+    /// Registers an OpenAI IEmbeddingGenerator&lt;string, Embedding&lt;float&gt;&gt; from the
+    /// "openai-embed" connection (added in AppHost as text-embedding-3-small). Used by the
+    /// embedding-backed RAG store in Step 6. Embeddings are OpenAI-only here; if the chat
+    /// provider is Ollama you can still point SmartHome:RagStore at the keyword store.
+    /// </summary>
+    public static void RegisterEmbeddingGenerator(IHostApplicationBuilder builder)
+    {
+        builder.AddOpenAIClient("openai-embed").AddEmbeddingGenerator();
+    }
 }

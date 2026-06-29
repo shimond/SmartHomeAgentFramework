@@ -14,7 +14,7 @@ builder.Services.AddSingleton<HomeState>();
 
 
 
-builder.AddAIAgent("HomeAssistance", (sp, key) =>
+builder.AddAIAgent("concierge-with-tools", (sp, key) =>
 {
     var state = sp.GetRequiredService<HomeState>();
     var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
@@ -23,7 +23,7 @@ builder.AddAIAgent("HomeAssistance", (sp, key) =>
                 .AsBuilder()
                 .UseLogging(loggerFactory)
                 .UseOpenTelemetry(sourceName: "SmartHome", configure: o => o.EnableSensitiveData = true)
-                .BuildAIAgent(Agents.HomeAssistanceInstructions, tools: Agents.ToolsFor(state), name: "HomeAssistance", loggerFactory: loggerFactory);
+                .BuildAIAgent(Agents.HomeAssistanceInstructions, tools: Agents.ToolsFor(state), name: key, loggerFactory: loggerFactory);
     return client;
 });
 

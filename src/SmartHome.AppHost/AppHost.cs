@@ -6,6 +6,9 @@ var openai = builder.AddOpenAI("openai");
 
 var openAichat = openai.AddModel("openai-chat", "gpt-4o-mini");
 
+// Embeddings for Step 6's vector-search RAG store (in-memory cosine similarity).
+var openAiEmbed = openai.AddModel("openai-embed", "text-embedding-3-small");
+
 // ---- Ollama: one container, one model, shared by every step that uses it ----
 var ollama = builder.AddOllama("ollama")
     .WithDataVolume()      // persist pulled models across restarts
@@ -66,6 +69,7 @@ builder.AddProject<Projects.SmartHome_Step5_PersistentChat>("step5-persistent-ch
 //// ---- Step 6: RAG over the appliance manuals ----
 builder.AddProject<Projects.SmartHome_Step6_AgentWithRag>("step6-agent-rag")
     .WithReference(openAichat)
+    .WithReference(openAiEmbed)
     .WaitFor(openAichat);
 
 //// ---- Step 7: approval gate + OpenTelemetry (traces visible in the Aspire dashboard) ----

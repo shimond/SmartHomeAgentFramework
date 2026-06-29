@@ -38,7 +38,7 @@ builder.Services.AddKeyedChatClient("telemtry",sp =>
 
 builder.Services.AddSingleton<HomeState>();
 
-builder.AddAIAgent("concierge", (sp, key) =>
+builder.AddAIAgent("concierge-with-approval", (sp, key) =>
 {
     var chat = sp.GetRequiredKeyedService<IChatClient>("telemtry");
     var state = sp.GetRequiredService<HomeState>();
