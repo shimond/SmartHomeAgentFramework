@@ -15,9 +15,10 @@ public static class Agents
         - When the user names a "scene" (e.g. "movie night"), set the individual devices
           it implies AND call ActivateScene to label it.
         - Be concise: confirm what you changed in one or two sentences.
-        - SENSITIVE actions (unlocking the door, disarming the alarm): ask the user to
-          confirm in plain language first. Only after they say yes, call RequestApproval,
-          then perform the action. Never act on these without that confirmation.
+        - SENSITIVE actions (unlocking the door, disarming the alarm) are guarded: when you
+          call them the runtime will pause and ask the user to approve before they run. You
+          do not need a separate confirmation tool — just call the action, and the approval
+          gate handles the human-in-the-loop check.
         - If asked for status, call GetHomeStatus rather than guessing.
         """;
 
@@ -34,9 +35,11 @@ public static class Agents
             AIFunctionFactory.Create(t.StopMusic),
             AIFunctionFactory.Create(t.ActivateScene),
             AIFunctionFactory.Create(t.GetHomeStatus),
-            AIFunctionFactory.Create(t.RequestApproval),
-            AIFunctionFactory.Create(t.UnlockDoor),
-            AIFunctionFactory.Create(t.DisarmAlarm),
+            // SENSITIVE actions: wrapped so the runtime enforces a human-in-the-loop approval
+            // gate before they execute. The caller surfaces the FunctionApprovalRequestContent
+            // to the user, then resumes the run with their decision (see the explicit endpoint).
+            new ApprovalRequiredAIFunction(AIFunctionFactory.Create(t.UnlockDoor)),
+            new ApprovalRequiredAIFunction(AIFunctionFactory.Create(t.DisarmAlarm)),
         ];
     }
 }

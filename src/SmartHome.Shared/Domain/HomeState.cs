@@ -20,9 +20,6 @@ public sealed class HomeState
     public string? NowPlaying { get; set; }
     public string? ActiveScene { get; set; }
 
-    /// <summary>Flips to true once the user has confirmed a sensitive action (Step 7).</summary>
-    public bool SensitiveActionApproved { get; set; }
-
     public Room[] RoomsWithLightsOn() => Lights.Where(kv => kv.Value).Select(kv => kv.Key).ToArray();
 }
 

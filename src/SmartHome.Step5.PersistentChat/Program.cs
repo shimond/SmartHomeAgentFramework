@@ -79,7 +79,7 @@ using (var scope = app.Services.CreateScope())
 if (app.Environment.IsDevelopment())
     app.MapDevUI();
 
-//// --- THE PATTERN ITSELF: explicit load → rehydrate → run → save, once per request ---
+// --- THE PATTERN ITSELF: explicit load → rehydrate → run → save, once per request ---
 //app.MapPost("/api/chat-persistent", async (
 //    PersistentChatRequest req, AIAgent agent, IConversationStore store, CancellationToken ct) =>
 //{
@@ -94,12 +94,35 @@ if (app.Environment.IsDevelopment())
 
 //    // 3. Run with the full history — behaves exactly like Step 3/4 but stateless per-request.
 //    var response = await agent.RunAsync(messages, null, null, ct);
+//    messages.AddRange(response.Messages);
+
+//    // 3a. HUMAN-IN-THE-LOOP: the sensitive tools (UnlockDoor/DisarmAlarm) are wrapped in
+//    //     ApprovalRequiredAIFunction, so instead of executing, the runtime hands back a
+//    //     ToolApprovalRequestContent. In a real UI you'd surface req.ToolCall.Name + arguments
+//    //     to the user and wait for their click; this stateless endpoint auto-approves and
+//    //     resumes, re-running until no approval requests remain. Decide the verdict however
+//    //     you like — return false from CreateResponse(...) to reject the call instead.
+//    static bool DecideApproval(ToolApprovalRequestContent _) => true;
+
+//    static List<ToolApprovalRequestContent> PendingApprovals(AgentResponse r) =>
+//        r.Messages.SelectMany(m => m.Contents).OfType<ToolApprovalRequestContent>().ToList();
+
+//    var pending = PendingApprovals(response);
+//    while (pending.Count > 0)
+//    {
+//        var decisions = new ChatMessage(ChatRole.User,
+//            [.. pending.Select(p => p.CreateResponse(DecideApproval(p), reason: null))]);
+//        messages.Add(decisions);
+
+//        response = await agent.RunAsync([decisions], null, null, ct);
+//        messages.AddRange(response.Messages);
+
+//        pending = PendingApprovals(response);
+//    }
 
 //    // 4. Persist the updated transcript back. The NEXT request — on ANY container —
 //    //    reloads from here, not from this process's memory.
-//    var updatedHistory = new List<ChatMessage>(messages);
-//    updatedHistory.Add(new ChatMessage(ChatRole.Assistant, response.Text));
-//    await store.SaveAsync(req.ConversationId, updatedHistory, ct);
+//    await store.SaveAsync(req.ConversationId, messages, ct);
 
 //    return Results.Ok(new { reply = response.Text, conversationId = req.ConversationId });
 //});

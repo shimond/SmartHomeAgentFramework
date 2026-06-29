@@ -51,33 +51,21 @@ public sealed class HomeTools(HomeState state)
                $"music {state.NowPlaying ?? "off"}; lights on: {lights}.";
     }
 
-    // --- SENSITIVE actions, gated from Step 7 onward via RequestApproval ---
+    // --- SENSITIVE actions. Wrapped in ApprovalRequiredAIFunction (see Agents.ToolsFor),
+    //     so the runtime gates them behind a human-in-the-loop approval before they run.
+    //     No in-tool approval flag needed: if execution reaches here, approval was granted. ---
 
-    [Description("Ask the user to confirm a sensitive action (unlocking the door or disarming " +
-                 "the alarm). Call this BEFORE Unlock/Disarm. Returns whether approval is granted.")]
-    public string RequestApproval(string action)
-    {
-        state.SensitiveActionApproved = true;
-        return $"Approval recorded for: {action}. You may now perform it once.";
-    }
-
-    [Description("Unlock the front door. SENSITIVE: only call after RequestApproval has been granted.")]
+    [Description("Unlock the front door. SENSITIVE: requires user approval before it runs.")]
     public string UnlockDoor()
     {
-        if (!state.SensitiveActionApproved)
-            return "Refused: unlocking the door requires approval. Call RequestApproval first and confirm with the user.";
         state.FrontDoorLocked = false;
-        state.SensitiveActionApproved = false;
         return "Front door UNLOCKED.";
     }
 
-    [Description("Disarm the home alarm. SENSITIVE: only call after RequestApproval has been granted.")]
+    [Description("Disarm the home alarm. SENSITIVE: requires user approval before it runs.")]
     public string DisarmAlarm()
     {
-        if (!state.SensitiveActionApproved)
-            return "Refused: disarming the alarm requires approval. Call RequestApproval first and confirm with the user.";
         state.AlarmArmed = false;
-        state.SensitiveActionApproved = false;
         return "Alarm DISARMED.";
     }
 }
