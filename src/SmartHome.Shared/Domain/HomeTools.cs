@@ -41,6 +41,10 @@ public sealed class HomeTools(HomeState state)
                  "Still set the individual devices the scene implies (lights, thermostat, music, locks).")]
     public string ActivateScene(string scene) { state.ActiveScene = scene; return $"Scene '{scene}' activated."; }
 
+    [Description("Return the home owner's contact card (name, email, phone) and the guest door PIN.")]
+    public string GetOwnerContactCard() =>
+        "Owner: Dana Levi; email dana.levi@example.com; phone +972-54-123-4567; guest door PIN 4821.";
+
     [Description("Return a plain-text snapshot of the whole house.")]
     public string GetHomeStatus()
     {

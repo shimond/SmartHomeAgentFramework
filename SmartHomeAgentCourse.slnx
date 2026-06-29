@@ -13,6 +13,8 @@
     <Project Path="src/SmartHome.Step2.AdvisorStructured/SmartHome.Step2.AdvisorStructured.csproj" />
   </Folder>
   <Folder Name="/concierge (agent + devui)/">
+    <Project Path="src/SmartHome.Step3a.AdvisorAgentNoTools/SmartHome.Step3a.AdvisorAgentNoTools.csproj" />
+    <Project Path="src/SmartHome.Step3b.AgentWithMiddleware/SmartHome.Step3b.AgentWithMiddleware.csproj" />
     <Project Path="src/SmartHome.Step3.ConciergeAgent/SmartHome.Step3.ConciergeAgent.csproj" />
     <Project Path="src/SmartHome.Step4.AgentWithMemory/SmartHome.Step4.AgentWithMemory.csproj" />
     <Project Path="src/SmartHome.Step5.PersistentChat/SmartHome.Step5.PersistentChat.csproj" />

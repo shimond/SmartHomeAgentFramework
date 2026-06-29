@@ -20,9 +20,9 @@ var postgres = builder.AddPostgres("postgres")
 
 var conversationsDb = postgres.AddDatabase("conversations");
 
-// ---- Steps 0a/0b/1/2: the advisor (plain ASP.NET endpoints + embedded HTML page) ----
+//----Steps 0a / 0b / 1 / 2: the advisor(plain ASP.NET endpoints + embedded HTML page) ----
 builder.AddProject<Projects.SmartHome_Step0a_AdvisorOpenAI>("step0a-advisor-openai")
-    .WithReference(openai);
+   .WithReference(openai);
 
 builder.AddProject<Projects.SmartHome_Step0b_AdvisorOllama>("step0b-advisor-ollama")
     .WithReference(ollamaChat)
@@ -36,6 +36,16 @@ builder.AddProject<Projects.SmartHome_Step2_AdvisorStructured>("step2-advisor-st
     .WithReference(ollamaChat)
     .WithReference(openAichat);
 
+
+////// ---- Step 3a: the advisor as an AIAgent (no tools) — the bridge between Step 1 and Step 3 ----
+builder.AddProject<Projects.SmartHome_Step3a_AdvisorAgentNoTools>("step3a-advisor-agent-notools")
+    .WithReference(ollamaChat)
+    .WithReference(openAichat);
+
+//// ---- Step 3b: agent middleware (run + function-invocation interceptors) ----
+builder.AddProject<Projects.SmartHome_Step3b_AgentWithMiddleware>("step3b-agent-middleware")
+    .WithReference(ollamaChat)
+    .WithReference(openAichat);
 
 //// ---- Steps 3/4: the agent, hosted via AddAIAgent + DevUI (no more HTML page) ----
 builder.AddProject<Projects.SmartHome_Step3_ConciergeAgent>("step3-concierge-agent")
@@ -75,7 +85,7 @@ builder.AddProject<Projects.SmartHome_Step8_AgentWithMcp>("step8-agent-mcp")
     .WaitFor(openAichat)
     .WaitFor(mcpServer);
 
-//// ---- Step 9: comfort/security/energy specialists + a sequential workflow ----
+////// ---- Step 9: comfort/security/energy specialists + a sequential workflow ----
 builder.AddProject<Projects.SmartHome_Step9_MultiAgentWorkflow>("step9-multi-agent")
     .WithReference(openAichat)
     .WithReference(mcpServer)

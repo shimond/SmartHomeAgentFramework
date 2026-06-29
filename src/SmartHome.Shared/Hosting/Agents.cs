@@ -33,6 +33,7 @@ public static class Agents
             AIFunctionFactory.Create(t.PlayMusic),
             AIFunctionFactory.Create(t.StopMusic),
             AIFunctionFactory.Create(t.ActivateScene),
+            AIFunctionFactory.Create(t.GetOwnerContactCard),
             AIFunctionFactory.Create(t.GetHomeStatus),
             AIFunctionFactory.Create(t.RequestApproval),
             AIFunctionFactory.Create(t.UnlockDoor),
@@ -41,7 +42,6 @@ public static class Agents
     }
 }
 
-/// <summary>Instructions for the ADVISOR (Steps 0a–2) — pure chat, no tools, no actions.</summary>
 public static class AdvisorInstructions
 {
     public const string Text =

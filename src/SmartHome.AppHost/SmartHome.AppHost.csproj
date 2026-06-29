@@ -21,6 +21,8 @@
 		<ProjectReference Include="..\SmartHome.Step0b.AdvisorOllama\SmartHome.Step0b.AdvisorOllama.csproj" />
 		<ProjectReference Include="..\SmartHome.Step1.AdvisorAbstracted\SmartHome.Step1.AdvisorAbstracted.csproj" />
 		<ProjectReference Include="..\SmartHome.Step2.AdvisorStructured\SmartHome.Step2.AdvisorStructured.csproj" />
+		<ProjectReference Include="..\SmartHome.Step3a.AdvisorAgentNoTools\SmartHome.Step3a.AdvisorAgentNoTools.csproj" />
+		<ProjectReference Include="..\SmartHome.Step3b.AgentWithMiddleware\SmartHome.Step3b.AgentWithMiddleware.csproj" />
 		<ProjectReference Include="..\SmartHome.Step3.ConciergeAgent\SmartHome.Step3.ConciergeAgent.csproj" />
 		<ProjectReference Include="..\SmartHome.Step4.AgentWithMemory\SmartHome.Step4.AgentWithMemory.csproj" />
 		<ProjectReference Include="..\SmartHome.Step5.PersistentChat\SmartHome.Step5.PersistentChat.csproj" />

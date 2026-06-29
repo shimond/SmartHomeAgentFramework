@@ -15,6 +15,7 @@ using Microsoft.Agents.AI.DevUI;
 using Microsoft.Agents.AI.Hosting;
 using Microsoft.Extensions.AI;
 using ModelContextProtocol.Client;
+using OpenAI.Responses;
 using SmartHome.Shared.Domain;
 using SmartHome.Shared.Hosting;
 
@@ -24,19 +25,16 @@ builder.AddServiceDefaults();
 ChatClientSetup.RegisterAIClient(builder);
 
 builder.Services.AddSingleton<HomeState>();
-
+builder.Services.AddSingleton<McpToolsProvider>();
 builder.Services.AddHttpClient("mcp-energy-server");
 
-// McpToolsProvider does the async MCP handshake in StartAsync (proper IHostedService
-// lifecycle) and makes the tool list available as a singleton before the agent runs.
-builder.Services.AddSingleton<McpToolsProvider>();
-builder.Services.AddHostedService(sp => sp.GetRequiredService<McpToolsProvider>());
 
-builder.AddAIAgent("concierge", (sp, key) =>
+builder.AddAIAgent("concierge",  (sp, key) =>
 {
     var chat = sp.GetRequiredService<IChatClient>();
     var state = sp.GetRequiredService<HomeState>();
-    var mcpTools = sp.GetRequiredService<McpToolsProvider>().Tools;
+    var mcpToolsProvider = sp.GetRequiredService<McpToolsProvider>();
+    var mcpTools = mcpToolsProvider.GetTools().Result;
 
     var tools = Agents.ToolsFor(state);
     foreach (var t in mcpTools) tools.Add(t);
@@ -60,18 +58,16 @@ app.Run();
 /// Performs the async MCP handshake during host startup and exposes the tool list.
 /// Using IHostedService ensures proper async lifecycle without blocking or sync-over-async.
 /// </summary>
-sealed class McpToolsProvider(IHttpClientFactory httpClientFactory, IConfiguration configuration) : IHostedService, IAsyncDisposable
+sealed class McpToolsProvider(IHttpClientFactory httpClientFactory, IConfiguration configuration) 
 {
     private McpClient? _mcpClient;
-    public IList<McpClientTool> Tools { get; private set; } = [];
-
-    public async Task StartAsync(CancellationToken cancellationToken)
+   
+    public async Task<IList<McpClientTool>> GetTools()
     {
-        // Dump all Aspire-injected service keys so we can see the exact format.
         var mcpKeys = configuration.AsEnumerable()
-            .Where(kv => kv.Key.Contains("mcp", StringComparison.OrdinalIgnoreCase) ||
-                         kv.Key.StartsWith("services", StringComparison.OrdinalIgnoreCase))
-            .ToList();
+         .Where(kv => kv.Key.Contains("mcp", StringComparison.OrdinalIgnoreCase) ||
+                      kv.Key.StartsWith("services", StringComparison.OrdinalIgnoreCase))
+         .ToList();
         foreach (var kv in mcpKeys)
             Console.WriteLine($"[MCP-DIAG] {kv.Key} = {kv.Value}");
 
@@ -88,17 +84,10 @@ sealed class McpToolsProvider(IHttpClientFactory httpClientFactory, IConfigurati
                 new HttpClientTransportOptions { Endpoint = new Uri(endpoint) },
                 httpClient,
                 loggerFactory: null,
-                ownsHttpClient: true),
-            cancellationToken: cancellationToken);
+                ownsHttpClient: true));
 
-        Tools = await _mcpClient.ListToolsAsync(cancellationToken: cancellationToken);
+        var res =  await _mcpClient.ListToolsAsync();
+        return res;
     }
 
-    public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
-
-    public async ValueTask DisposeAsync()
-    {
-        if (_mcpClient is not null)
-            await _mcpClient.DisposeAsync();
-    }
 }
