@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json.schemastore.org/launchsettings.json",
+  "profiles": {
+    "Step7.AgentWithApproval": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "launchUrl": "devui",
+      "applicationUrl": "https://localhost:7118;http://localhost:5118",
+      "environmentVariables": { "ASPNETCORE_ENVIRONMENT": "Development" }
+    }
+  }
+}

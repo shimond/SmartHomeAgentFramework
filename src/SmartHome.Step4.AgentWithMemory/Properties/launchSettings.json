@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json.schemastore.org/launchsettings.json",
+  "profiles": {
+    "Step4.AgentWithMemory": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "launchUrl": "devui",
+      "applicationUrl": "https://localhost:7115;http://localhost:5115",
+      "environmentVariables": { "ASPNETCORE_ENVIRONMENT": "Development" }
+    }
+  }
+}

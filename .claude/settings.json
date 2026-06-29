@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Add-Type -Path \"C:\\\\Users\\\\Shimo\\\\.nuget\\\\packages\\\\microsoft.agents.ai\\\\1.0.0\\\\lib\\\\net9.0\\\\Microsoft.Agents.AI.dll\"; [Microsoft.Agents.AI.ChatClientAgentOptions].GetProperties\\(\\) | Select-Object Name, PropertyType)"
+    ]
+  }
+}

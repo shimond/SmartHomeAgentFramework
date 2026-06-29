@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json.schemastore.org/launchsettings.json",
+  "profiles": {
+    "Step6.AgentWithRag": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "launchUrl": "devui",
+      "applicationUrl": "https://localhost:7117;http://localhost:5117",
+      "environmentVariables": { "ASPNETCORE_ENVIRONMENT": "Development" }
+    }
+  }
+}

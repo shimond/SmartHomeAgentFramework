@@ -1,0 +1,34 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<Sdk Name="Aspire.AppHost.Sdk" Version="13.0.0" />
+
+
+	<PropertyGroup>
+		<OutputType>Exe</OutputType>
+		<IsAspireHost>true</IsAspireHost>
+		<UserSecretsId>fe8ac0f9-94e9-4766-8846-f638f607134e</UserSecretsId>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Aspire.Hosting.AppHost" />
+		<PackageReference Include="Aspire.Hosting.OpenAI" />
+		<PackageReference Include="Aspire.Hosting.PostgreSQL" />
+		<PackageReference Include="CommunityToolkit.Aspire.Hosting.Ollama" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\SmartHome.Step0a.AdvisorOpenAI\SmartHome.Step0a.AdvisorOpenAI.csproj" />
+		<ProjectReference Include="..\SmartHome.Step0b.AdvisorOllama\SmartHome.Step0b.AdvisorOllama.csproj" />
+		<ProjectReference Include="..\SmartHome.Step1.AdvisorAbstracted\SmartHome.Step1.AdvisorAbstracted.csproj" />
+		<ProjectReference Include="..\SmartHome.Step2.AdvisorStructured\SmartHome.Step2.AdvisorStructured.csproj" />
+		<ProjectReference Include="..\SmartHome.Step3.ConciergeAgent\SmartHome.Step3.ConciergeAgent.csproj" />
+		<ProjectReference Include="..\SmartHome.Step4.AgentWithMemory\SmartHome.Step4.AgentWithMemory.csproj" />
+		<ProjectReference Include="..\SmartHome.Step5.PersistentChat\SmartHome.Step5.PersistentChat.csproj" />
+		<ProjectReference Include="..\SmartHome.Step6.AgentWithRag\SmartHome.Step6.AgentWithRag.csproj" />
+		<ProjectReference Include="..\SmartHome.Step7.AgentWithApproval\SmartHome.Step7.AgentWithApproval.csproj" />
+		<ProjectReference Include="..\SmartHome.Step8.AgentWithMcp\SmartHome.Step8.AgentWithMcp.csproj" />
+		<ProjectReference Include="..\SmartHome.Step9.MultiAgentWorkflow\SmartHome.Step9.MultiAgentWorkflow.csproj" />
+		<ProjectReference Include="..\SmartHome.McpServer\SmartHome.McpServer.csproj" />
+	</ItemGroup>
+
+</Project>

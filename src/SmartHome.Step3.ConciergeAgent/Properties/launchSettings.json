@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json.schemastore.org/launchsettings.json",
+  "profiles": {
+    "Step3.ConciergeAgent": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "launchUrl": "devui",
+      "applicationUrl": "https://localhost:7114;http://localhost:5114",
+      "environmentVariables": { "ASPNETCORE_ENVIRONMENT": "Development" }
+    }
+  }
+}

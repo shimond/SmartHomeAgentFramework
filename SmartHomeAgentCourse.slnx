@@ -1,0 +1,30 @@
+<Solution>
+  <Folder Name="/orchestration/">
+    <Project Path="src/SmartHome.AppHost/SmartHome.AppHost.csproj" />
+    <Project Path="src/SmartHome.ServiceDefaults/SmartHome.ServiceDefaults.csproj" />
+  </Folder>
+  <Folder Name="/shared/">
+    <Project Path="src/SmartHome.Shared/SmartHome.Shared.csproj" />
+  </Folder>
+  <Folder Name="/advisor (chat client only)/">
+    <Project Path="src/SmartHome.Step0a.AdvisorOpenAI/SmartHome.Step0a.AdvisorOpenAI.csproj" />
+    <Project Path="src/SmartHome.Step0b.AdvisorOllama/SmartHome.Step0b.AdvisorOllama.csproj" />
+    <Project Path="src/SmartHome.Step1.AdvisorAbstracted/SmartHome.Step1.AdvisorAbstracted.csproj" />
+    <Project Path="src/SmartHome.Step2.AdvisorStructured/SmartHome.Step2.AdvisorStructured.csproj" />
+  </Folder>
+  <Folder Name="/concierge (agent + devui)/">
+    <Project Path="src/SmartHome.Step3.ConciergeAgent/SmartHome.Step3.ConciergeAgent.csproj" />
+    <Project Path="src/SmartHome.Step4.AgentWithMemory/SmartHome.Step4.AgentWithMemory.csproj" />
+    <Project Path="src/SmartHome.Step5.PersistentChat/SmartHome.Step5.PersistentChat.csproj" />
+    <Project Path="src/SmartHome.Step6.AgentWithRag/SmartHome.Step6.AgentWithRag.csproj" />
+    <Project Path="src/SmartHome.Step7.AgentWithApproval/SmartHome.Step7.AgentWithApproval.csproj" />
+    <Project Path="src/SmartHome.Step8.AgentWithMcp/SmartHome.Step8.AgentWithMcp.csproj" />
+    <Project Path="src/SmartHome.Step9.MultiAgentWorkflow/SmartHome.Step9.MultiAgentWorkflow.csproj" />
+  </Folder>
+  <Folder Name="/mcp/">
+    <Project Path="src/SmartHome.McpServer/SmartHome.McpServer.csproj" />
+  </Folder>
+  <Folder Name="/evals/">
+    <Project Path="src/SmartHome.Evals/SmartHome.Evals.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,11 @@
+<Project>
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- Agent Framework, DevUI, Aspire integrations and the MCP SDK are still shipping
+         prerelease packages at various points; silence the related NuGet warnings. -->
+    <NoWarn>$(NoWarn);NU1605;NU5104;CS1591</NoWarn>
+  </PropertyGroup>
+</Project>
