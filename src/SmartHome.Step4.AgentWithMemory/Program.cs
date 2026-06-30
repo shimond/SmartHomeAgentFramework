@@ -43,7 +43,6 @@ builder.AddAIAgent("concierge-with-memory", (sp, key) =>
             "Before activating a scene, call RecallPreference to honor saved settings.",
         key, null, tools);
 });
-
 var app = builder.Build();
 app.MapDefaultEndpoints();
 
