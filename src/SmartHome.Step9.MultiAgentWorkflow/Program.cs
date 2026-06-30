@@ -65,26 +65,31 @@ builder.AddAIAgent("energy", (sp, key) => Specialist(sp, key,
 // here the wall-clock time is roughly that of the slowest single agent. To match this by hand
 // you'd be writing Task.WhenAll + result-collection + failure isolation yourself — BuildConcurrent
 // is that, declaratively, in one call.
-builder.AddWorkflow("home-briefing", (sp, key) =>
+// Aggregator (fan-in): stitch each specialist's final line into a single briefing message.
+static List<ChatMessage> Merge(IList<List<ChatMessage>> perAgent)
+{
+    var lines = perAgent
+        .Select(messages => messages.LastOrDefault()?.Text?.Trim())
+        .Where(text => !string.IsNullOrWhiteSpace(text));
+    return [new ChatMessage(ChatRole.Assistant, "🏠 Home briefing:\n- " + string.Join("\n- ", lines))];
+}
+
+// We register the workflow-as-agent MANUALLY (not via .AddAsAIAgent()) for one reason: the
+// hosting shortcut hard-codes includeWorkflowOutputsInResponse = false, so the aggregated
+// briefing is produced but never forwarded to the response — DevUI then shows the executor
+// graph with "(no output)" on every node. Calling Workflow.AsAIAgent ourselves lets us pass
+// includeWorkflowOutputsInResponse: true, which surfaces the merged "🏠 Home briefing" as the
+// agent's actual reply. Registered as a keyed AIAgent, exactly like AddAIAgent does, so DevUI
+// still discovers it.
+builder.Services.AddKeyedSingleton<AIAgent>("home-briefing", (sp, key) =>
 {
     var security = sp.GetRequiredKeyedService<AIAgent>("security");
     var comfort = sp.GetRequiredKeyedService<AIAgent>("comfort");
     var energy = sp.GetRequiredKeyedService<AIAgent>("energy");
 
-    // Aggregator (fan-in): stitch each specialist's final line into a single briefing message.
-    // NOTE on DevUI: a workflow run streams every executor's output, so DevUI shows the three
-    // specialist turns (Security:/Comfort:/Energy:) AND this merged message. The merged
-    // "🏠 Home briefing" is the LAST message in the run — that's the full answer to look for.
-    static List<ChatMessage> Merge(IList<List<ChatMessage>> perAgent)
-    {
-        var lines = perAgent
-            .Select(messages => messages.LastOrDefault()?.Text?.Trim())
-            .Where(text => !string.IsNullOrWhiteSpace(text));
-        return [new ChatMessage(ChatRole.Assistant, "🏠 Home briefing:\n- " + string.Join("\n- ", lines))];
-    }
-
-    return AgentWorkflowBuilder.BuildConcurrent(key, [security, comfort, energy], Merge);
-}).AddAsAIAgent();
+    var workflow = AgentWorkflowBuilder.BuildConcurrent((string)key, [security, comfort, energy], Merge);
+    return workflow.AsAIAgent(name: (string)key, includeWorkflowOutputsInResponse: true);
+});
 
 var app = builder.Build();
 app.MapDefaultEndpoints();
