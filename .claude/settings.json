@@ -1,10 +1,7 @@
 {
   "permissions": {
     "allow": [
-      "PowerShell(Add-Type -Path \"C:\\\\Users\\\\Shimo\\\\.nuget\\\\packages\\\\microsoft.agents.ai\\\\1.0.0\\\\lib\\\\net9.0\\\\Microsoft.Agents.AI.dll\"; [Microsoft.Agents.AI.ChatClientAgentOptions].GetProperties\\(\\) | Select-Object Name, PropertyType)",
-      "Bash(dotnet build *)",
-      "Bash(cd \"c:/ai-conf/SmartHomeAgentCourse/SmartHomeAgentCourse\" && grep -o 'M:Microsoft.Agents.AI.AIAgentBuilder.Use\\([^\"]*' /c/Users/Shimo/.nuget/packages/microsoft.agents.ai/1.10.0/lib/net10.0/Microsoft.Agents.AI.xml | grep -i \"Collections\\\\|Func\" | head)",
-      "Read(//c/Users/Shimo/.nuget/packages/microsoft.agents.ai/1.10.0/lib/net10.0/**)"
+     
     ]
   }
 }
