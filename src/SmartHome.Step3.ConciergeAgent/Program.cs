@@ -10,13 +10,13 @@ builder.AddServiceDefaults();
 
 ChatClientSetup.RegisterAIClient(builder);
 
-builder.Services.AddSingleton<HomeState>();
+builder.Services.AddSingleton<IHomeGateway, InMemoryHome>();
 
 
 
 builder.AddAIAgent("concierge-with-tools", (sp, key) =>
 {
-    var state = sp.GetRequiredService<HomeState>();
+    var state = sp.GetRequiredService<IHomeGateway>();
     var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
 
     var client = sp.GetRequiredService<IChatClient>()

@@ -14,7 +14,6 @@ using Microsoft.Agents.AI;
 using Microsoft.Agents.AI.DevUI;
 using Microsoft.Agents.AI.Hosting;
 using Microsoft.Extensions.AI;
-using ModelContextProtocol.Client;
 using OpenAI.Responses;
 using SmartHome.Shared.Domain;
 using SmartHome.Shared.Hosting;
@@ -24,7 +23,7 @@ builder.AddServiceDefaults();
 
 ChatClientSetup.RegisterAIClient(builder);
 
-builder.Services.AddSingleton<HomeState>();
+builder.Services.AddSingleton<IHomeGateway, InMemoryHome>();
 builder.Services.AddSingleton<McpToolsProvider>();
 builder.Services.AddHttpClient("mcp-energy-server");
 
@@ -32,9 +31,9 @@ builder.Services.AddHttpClient("mcp-energy-server");
 builder.AddAIAgent("concierge-with-mcp",  (sp, key) =>
 {
     var chat = sp.GetRequiredService<IChatClient>();
-    var state = sp.GetRequiredService<HomeState>();
+    var state = sp.GetRequiredService<IHomeGateway>();
     var mcpToolsProvider = sp.GetRequiredService<McpToolsProvider>();
-    var mcpTools = mcpToolsProvider.GetTools().Result;
+    var mcpTools = mcpToolsProvider.Tools;
 
     var tools = Agents.ToolsFor(state);
     foreach (var t in mcpTools) tools.Add(t);
@@ -48,47 +47,16 @@ builder.AddAIAgent("concierge-with-mcp",  (sp, key) =>
 });
 
 var app = builder.Build();
+
+// Warm the MCP handshake once, before the host starts serving requests, so the
+// "concierge-with-mcp" agent factory above can read McpToolsProvider.Tools synchronously
+// instead of blocking on the async handshake (AddAIAgent's factory delegate has no async
+// overload).
+await app.Services.GetRequiredService<McpToolsProvider>().GetTools();
+
 app.MapDefaultEndpoints();
 
 if (app.Environment.IsDevelopment())
     app.MapDevUI();
 
 app.Run();
-
-/// <summary>
-/// Performs the async MCP handshake during host startup and exposes the tool list.
-/// Using IHostedService ensures proper async lifecycle without blocking or sync-over-async.
-/// </summary>
-sealed class McpToolsProvider(IHttpClientFactory httpClientFactory, IConfiguration configuration) 
-{
-    private McpClient? _mcpClient;
-   
-    public async Task<IList<McpClientTool>> GetTools()
-    {
-        var mcpKeys = configuration.AsEnumerable()
-         .Where(kv => kv.Key.Contains("mcp", StringComparison.OrdinalIgnoreCase) ||
-                      kv.Key.StartsWith("services", StringComparison.OrdinalIgnoreCase))
-         .ToList();
-        foreach (var kv in mcpKeys)
-            Console.WriteLine($"[MCP-DIAG] {kv.Key} = {kv.Value}");
-
-        var endpoint =
-            configuration["services:mcp-energy-server:https:0"] ??
-            configuration["services:mcp-energy-server:http:0"] ??
-            "http://localhost:5300";
-
-        var httpClient = httpClientFactory.CreateClient("mcp-energy-server");
-        httpClient.BaseAddress = new Uri(endpoint);
-
-        _mcpClient = await McpClient.CreateAsync(
-            new HttpClientTransport(
-                new HttpClientTransportOptions { Endpoint = new Uri(endpoint) },
-                httpClient,
-                loggerFactory: null,
-                ownsHttpClient: true));
-
-        var res =  await _mcpClient.ListToolsAsync();
-        return res;
-    }
-
-}

@@ -34,7 +34,7 @@ using SmartHome.Step5.PersistentChat;
 var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceDefaults();
 ChatClientSetup.RegisterAIClient(builder);
-builder.Services.AddSingleton<HomeState>();
+builder.Services.AddSingleton<IHomeGateway, InMemoryHome>();
 
 // Aspire's Postgres client integration: registers an NpgsqlDataSource resolved from the
 // "conversations" connection string the AppHost injects via .WithReference(conversationsDb).
@@ -49,7 +49,7 @@ builder.Services.AddSingleton<PostgresChatHistoryProvider>();
 builder.AddAIAgent("concierge-persistent-chat", (sp, key) =>
 {
     var chat = sp.GetRequiredService<IChatClient>();
-    var state = sp.GetRequiredService<HomeState>();
+    var state = sp.GetRequiredService<IHomeGateway>();
 
     // Framework-native upgrade (DONE): give the agent a Postgres-backed ChatHistoryProvider so
     // DevUI's OWN sessions persist to Postgres too — not just the explicit endpoint below. With this
@@ -73,8 +73,9 @@ var app = builder.Build();
 app.MapDefaultEndpoints();
 
 // Create the table on startup — fine for a workshop; use real migrations in production.
-using (var scope = app.Services.CreateScope())
-    await scope.ServiceProvider.GetRequiredService<PostgresConversationStore>().EnsureSchemaAsync();
+// No scope needed: PostgresConversationStore is a singleton (there are no scoped services
+// in this solution), so CreateScope() here would buy nothing but an extra IDisposable.
+await app.Services.GetRequiredService<PostgresConversationStore>().EnsureSchemaAsync();
 
 if (app.Environment.IsDevelopment())
     app.MapDevUI();

@@ -28,8 +28,10 @@ var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceDefaults();
 
 // Aspire injects the Ollama container's endpoint via service discovery when this project
-// is referenced with .WithReference(chatModel) in the AppHost. Outside Aspire, fall back
-// to localhost. Verify the exact Aspire-injected config/env-var name against the installed
+// is referenced with .WithReference(chatModel) in the AppHost, setting OLLAMA_CHAT_URI /
+// OLLAMA_CHAT_MODEL. Outside Aspire, both must be set manually (e.g. in launchSettings.json
+// or the environment) — there is no localhost fallback here; a missing value throws at
+// construction. Verify the exact Aspire-injected config/env-var name against the installed
 // CommunityToolkit.Aspire.Hosting.Ollama version.
 
 var ollamaClient = new OllamaApiClient(builder.Configuration["OLLAMA_CHAT_URI"], builder.Configuration["OLLAMA_CHAT_MODEL"]);

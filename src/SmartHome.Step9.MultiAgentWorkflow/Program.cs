@@ -11,7 +11,7 @@ using SmartHome.Shared.Hosting;
 var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceDefaults();
 ChatClientSetup.RegisterAIClient(builder);
-builder.Services.AddSingleton<HomeState>();
+builder.Services.AddSingleton<IHomeGateway, InMemoryHome>();
 
 // Register a named HttpClient. AddServiceDefaults wires Aspire service discovery onto
 // every HttpClient, so requests to "https+http://mcp-energy-server" are resolved at
@@ -28,7 +28,7 @@ builder.Services.AddSingleton<McpToolsProvider>();
 static ChatClientAgent Specialist(IServiceProvider sp, string name, string instructions, IList<McpClientTool>? energyTools = null)
 {
     var chat = sp.GetRequiredService<IChatClient>();
-    var state = sp.GetRequiredService<HomeState>();
+    var state = sp.GetRequiredService<IHomeGateway>();
     var tools = Agents.ToolsFor(state);
     if (energyTools is not null)
         foreach (var t in energyTools) tools.Add(t);
@@ -57,7 +57,7 @@ builder.AddAIAgent("energy", (sp, key) => Specialist(sp, key,
     "Reply with EXACTLY ONE short line, starting with 'Energy:', giving the current price band " +
     "and whether now is a good time for heavy appliances. Do NOT mention the lock, alarm, " +
     "lights, thermostat or music — those belong to other reporters. No preamble, no extra sentences.",
-    sp.GetRequiredService<McpToolsProvider>().GetTools().Result));
+    sp.GetRequiredService<McpToolsProvider>().Tools));
 
 // --- CONCURRENT WORKFLOW — the one shape a for-loop CANNOT replicate. All three specialists
 // run AT THE SAME TIME on the same "home briefing" prompt; the aggregator merges their replies
@@ -92,67 +92,16 @@ builder.Services.AddKeyedSingleton<AIAgent>("home-briefing", (sp, key) =>
 });
 
 var app = builder.Build();
+
+// Warm the MCP handshake once, before the host starts serving requests, so the "energy"
+// agent factory above can read McpToolsProvider.Tools synchronously instead of blocking
+// on the async handshake (AddAIAgent's factory delegate has no async overload).
+await app.Services.GetRequiredService<McpToolsProvider>().GetTools();
+
 app.MapDefaultEndpoints();
 
 if (app.Environment.IsDevelopment())
     app.MapDevUI();
 
 app.Run();
-
-/// <summary>
-/// Performs the async MCP handshake LAZILY on first use and caches the resulting tool list,
-/// so every agent that asks gets the same fully-populated list. The handshake runs at most
-/// once (guarded by a SemaphoreSlim) however many specialists request the tools. This avoids
-/// the startup race an eager IHostedService has: an agent can be built before startup
-/// finishes the handshake, and would then capture an empty tool list.
-/// </summary>
-sealed class McpToolsProvider(IHttpClientFactory httpClientFactory, IConfiguration configuration) : IAsyncDisposable
-{
-    private readonly SemaphoreSlim _gate = new(1, 1);
-    private McpClient? _mcpClient;
-    private IList<McpClientTool>? _tools;
-
-    public async Task<IList<McpClientTool>> GetTools(CancellationToken cancellationToken = default)
-    {
-        if (_tools is not null) return _tools;
-
-        await _gate.WaitAsync(cancellationToken);
-        try
-        {
-            if (_tools is not null) return _tools;
-
-            // Read the real URL Aspire injects via .WithReference(mcpServer) in the AppHost.
-            // Falls back to localhost for running without Aspire.
-            var endpoint =
-                configuration["services:mcp-energy-server:https:0"] ??
-                configuration["services:mcp-energy-server:http:0"] ??
-                "http://localhost:5300";
-
-            var httpClient = httpClientFactory.CreateClient("mcp-energy-server");
-            httpClient.BaseAddress = new Uri(endpoint);
-
-            _mcpClient = await McpClient.CreateAsync(
-                new HttpClientTransport(
-                    new HttpClientTransportOptions { Endpoint = new Uri(endpoint) },
-                    httpClient,
-                    loggerFactory: null,
-                    ownsHttpClient: true),
-                cancellationToken: cancellationToken);
-
-            _tools = await _mcpClient.ListToolsAsync(cancellationToken: cancellationToken);
-            return _tools;
-        }
-        finally
-        {
-            _gate.Release();
-        }
-    }
-
-    public async ValueTask DisposeAsync()
-    {
-        if (_mcpClient is not null)
-            await _mcpClient.DisposeAsync();
-        _gate.Dispose();
-    }
-}
 

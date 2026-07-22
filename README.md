@@ -4,20 +4,7 @@ A teaching solution built around one narrative arc: **feel the pain → see the 
 → hit its ceiling → see why agents exist → build agent capability one step at a time.**
 ASP.NET Core throughout. Aspire orchestrates Ollama + Postgres + every step.
 
-> ## ⚠️ Read this first
-> This solution was generated as a teaching scaffold and **was not compiled** (no .NET SDK
-> / no network in the environment that produced it). Treat it as a strong, consistent
-> starting point — not a guaranteed green build. Three fast-moving integration points are
-> flagged in code comments where they appear, because their exact API shape depends on
-> package versions that change frequently: **(1)** the Aspire↔Ollama integration
-> (`CommunityToolkit.Aspire.Hosting.Ollama`'s `AddOllama`/`AddModel`), **(2)** wiring a
-> Postgres-backed chat-history provider so DevUI's own sessions persist (Step 5currently
-> demonstrates the pattern via an explicit endpoint instead), and **(3)** the MCP client
-> construction in Step 8. Each is called out at its source with what to verify and against
-> which reference (the book repo, or the package's own docs).
-
----
-
+>
 ## The narrative, in one table
 
 | Step | What it shows | The "aha" |
@@ -26,6 +13,8 @@ ASP.NET Core throughout. Aspire orchestrates Ollama + Postgres + every step.
 | **0b** | Raw `OllamaApiClient` | Same goal, **completely different contract** — the pain |
 | **1** | `IChatClient` abstraction | One call site, either provider — the relief |
 | **2** | Structured output ceiling | Abstraction unifies the *call site*, not the *guarantee* |
+| **3a** | Agent, no tools | An agent is still just chat until it can act |
+| **3b** | Agent + middleware | Wrapping the client (e.g. PII redaction) without touching the agent itself |
 | **3** | `AddAIAgent` + DevUI + tools | The boundary: chat that **acts**; endpoints disappear, DevUI appears |
 | **4** | Agent + in-process memory | Remembers across restarts — but only on ONE container |
 | **5** | Agent + Postgres conversation store | **Any container, same conversation** |
@@ -48,7 +37,7 @@ dotnet run --project src/SmartHome.AppHost
 ```
 
 This brings up an Ollama container (model `llama3.2`, pre-pulled, persisted across
-restarts), a Postgres container + pgAdmin (for Step 5), and all eleven step projects,
+restarts), a Postgres container + pgAdmin (for Step 5), and all thirteen step projects,
 wired together via Aspire service discovery. The Aspire dashboard opens automatically —
 every project's logs, traces, and metrics are visible there, including Step 7's
 OpenTelemetry demo with zero extra setup (that's what `AddServiceDefaults()` buys you).
@@ -154,7 +143,8 @@ present; the manual wrap is the safe fallback either way.
 dotnet test src/SmartHome.Evals
 ```
 
-Deterministic **trajectory** checks — no LLM judge, no flake, runs in CI as a merge gate.
+Deterministic **trajectory** checks — no LLM judge, no flake, meant to run as a local
+merge gate (there is no CI workflow configured in this repo yet).
 The key one: `Unlock_request_must_be_preceded_by_approval` — the exact Step 7 guardrail,
 turned into something that can fail a build. This is layer 1 of the two-layer eval model;
 layer 2 (LLM-judged groundedness, intent resolution) would use
@@ -185,6 +175,8 @@ SmartHomeAgentCourse/
    ├─ SmartHome.Step0b.AdvisorOllama/    # raw Ollama SDK — the contrast
    ├─ SmartHome.Step1.AdvisorAbstracted/ # IChatClient
    ├─ SmartHome.Step2.AdvisorStructured/ # the structured-output ceiling
+   ├─ SmartHome.Step3a.AdvisorAgentNoTools/   # agent, no tools yet
+   ├─ SmartHome.Step3b.AgentWithMiddleware/   # agent + client-wrapping middleware (PII redaction)
    ├─ SmartHome.Step3.ConciergeAgent/    # AddAIAgent + DevUI + tools
    ├─ SmartHome.Step4.AgentWithMemory/   # + in-process memory
    ├─ SmartHome.Step5.PersistentChat/    # + Postgres conversation store

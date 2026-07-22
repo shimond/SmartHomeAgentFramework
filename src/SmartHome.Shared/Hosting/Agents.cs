@@ -21,9 +21,9 @@ public static class Agents
         - If asked for status, call GetHomeStatus rather than guessing.
         """;
 
-    public static IList<AITool> ToolsFor(HomeState state)
+    public static IList<AITool> ToolsFor(IHomeGateway home)
     {
-        var t = new HomeTools(state);
+        var t = new HomeTools(home);
         return
         [
             AIFunctionFactory.Create(t.SetLight),

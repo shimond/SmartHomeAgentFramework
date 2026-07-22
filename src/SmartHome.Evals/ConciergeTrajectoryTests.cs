@@ -1,6 +1,8 @@
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using SmartHome.Shared.Domain;
 using SmartHome.Shared.Hosting;
 using Xunit;
@@ -73,17 +75,61 @@ internal static class TestAgentFactory
 {
     public static AIAgent CreateConcierge()
     {
-        var config = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["SmartHome:Provider"] = Environment.GetEnvironmentVariable("SMARTHOME_PROVIDER") ?? "Ollama",
-                ["SmartHome:Model"] = Environment.GetEnvironmentVariable("SMARTHOME_MODEL") ?? "llama3.2",
-            })
-            .Build();
+        var provider = Environment.GetEnvironmentVariable("SMARTHOME_PROVIDER") ?? "Ollama";
+        var isOpenAI = string.Equals(provider, "OpenAI", StringComparison.OrdinalIgnoreCase);
+        var model = Environment.GetEnvironmentVariable("SMARTHOME_MODEL")
+                    ?? (isOpenAI ? "gpt-4o-mini" : "llama3.2");
 
-        var chat = ChatClientSetup.CreateChatClient(config);
-        var state = new HomeState();
+        // Build the IChatClient through the SAME shared path as every agent step —
+        // ChatClientSetup.RegisterAIClient registers an IChatClient into DI off an
+        // IHostApplicationBuilder (it is NOT a factory), so the eval exercises the real
+        // wiring rather than a bespoke one that could drift from production.
+        var builder = Host.CreateApplicationBuilder();
 
-        return new ChatClientAgent(chat, Agents.ConciergeInstructions, "concierge", null, Agents.ToolsFor(state));
+        // This project shares the AppHost's UserSecretsId (see the .csproj), so the OpenAI
+        // key is maintained in ONE place. Load that store explicitly — the test host doesn't
+        // auto-load user secrets the way an app's own entry assembly does.
+        builder.Configuration.AddUserSecrets(typeof(ConciergeTrajectoryTests).Assembly, optional: true);
+
+        // Key resolution order: an explicit env var wins (handy for CI); otherwise fall back
+        // to the AppHost's user-secret (Aspire names it after the "openai" resource).
+        var apiKey = Environment.GetEnvironmentVariable("OPENAI_API_KEY")
+                     ?? builder.Configuration["Parameters:openai-openai-apikey"];
+
+        if (isOpenAI && string.IsNullOrWhiteSpace(apiKey))
+            throw new InvalidOperationException(
+                "SMARTHOME_PROVIDER=OpenAI requires an OpenAI key. Set OPENAI_API_KEY, or add it to " +
+                "the shared user-secrets store: dotnet user-secrets set \"Parameters:openai-openai-apikey\" " +
+                "\"sk-...\" --project src/SmartHome.AppHost");
+
+        builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["SmartHome:Provider"] = provider,
+            // RegisterAIClient reads the Ollama model from this key.
+            ["OLLAMA_CHAT_MODEL"] = model,
+            // Connection strings the Aspire client integrations resolve when NOT run under
+            // Aspire (plain `dotnet test`). These mirror what the AppHost injects: the Ollama
+            // endpoint, and for OpenAI a "Key=...;Model=..." string (Endpoint omitted → the
+            // default OpenAI endpoint). Values come from env so CI/Test Explorer can point
+            // them at a real backend; the exact keys track the Aspire package versions.
+            ["ConnectionStrings:ollama-chat"] =
+                Environment.GetEnvironmentVariable("OLLAMA_CHAT_URI") is { Length: > 0 } uri
+                    ? $"Endpoint={uri}"
+                    : "Endpoint=http://localhost:11434",
+            ["ConnectionStrings:openai-chat"] =
+                isOpenAI ? $"Key={apiKey};Model={model}" : null,
+        });
+
+        ChatClientSetup.RegisterAIClient(builder);
+
+        var host = builder.Build();
+        var chat = host.Services.GetRequiredService<IChatClient>();
+        var state = new InMemoryHome();
+
+        // Same instructions + tool set as the Step 3 concierge.
+        return chat.AsBuilder().BuildAIAgent(
+            Agents.HomeAssistanceInstructions,
+            tools: Agents.ToolsFor(state),
+            name: "concierge");
     }
 }

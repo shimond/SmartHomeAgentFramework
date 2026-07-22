@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Test run settings for SmartHome.Evals.
+
+  Auto-applied in Visual Studio Test Explorer AND `dotnet test` via the
+  <RunSettingsFilePath> property in SmartHome.Evals.csproj — you do not need to
+  select it manually.
+
+  These env vars are read by TestAgentFactory (ConciergeTrajectoryTests.cs) to pick
+  the model the evals run against. Provider + model live here (non-secret). The
+  OpenAI API key does NOT belong in source control — set OPENAI_API_KEY as a user
+  environment variable (see the workshop notes), and Test Explorer inherits it.
+
+  To run against local Ollama instead, change Provider to "Ollama" (and make sure
+  Ollama is listening on http://localhost:11434 with the model pulled).
+-->
+<RunSettings>
+  <RunConfiguration>
+    <EnvironmentVariables>
+      <SMARTHOME_PROVIDER>OpenAI</SMARTHOME_PROVIDER>
+      <SMARTHOME_MODEL>gpt-4o-mini</SMARTHOME_MODEL>
+    </EnvironmentVariables>
+  </RunConfiguration>
+</RunSettings>
