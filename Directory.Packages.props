@@ -38,13 +38,10 @@
     <!-- Hosting -->
     <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.9" />
     <PackageVersion Include="Microsoft.Extensions.Configuration" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration.UserSecrets" Version="10.0.9" />
     <!-- Testing -->
     <PackageVersion Include="xunit" Version="2.9.3" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.4" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
-    <!-- AI Evaluations -->
-    <PackageVersion Include="Microsoft.Extensions.AI.Evaluation" Version="10.7.0" />
-    <PackageVersion Include="Microsoft.Extensions.AI.Evaluation.Quality" Version="10.7.0" />
-    <PackageVersion Include="Microsoft.Extensions.AI.Evaluation.Reporting" Version="10.7.0" />
   </ItemGroup>
 </Project>

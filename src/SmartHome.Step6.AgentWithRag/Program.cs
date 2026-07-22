@@ -20,7 +20,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceDefaults();
 
 ChatClientSetup.RegisterAIClient(builder);
-builder.Services.AddSingleton<HomeState>();
+builder.Services.AddSingleton<IHomeGateway, InMemoryHome>();
 
 var manualsPath = Path.Combine(AppContext.BaseDirectory, "Rag", "Manuals");
 
@@ -45,7 +45,7 @@ else
 builder.AddAIAgent("concierge-with-rag", (sp, key) =>
 {
     var chat = sp.GetRequiredService<IChatClient>();
-    var state = sp.GetRequiredService<HomeState>();
+    var state = sp.GetRequiredService<IHomeGateway>();
 
     var tools = Agents.ToolsFor(state);
     tools.Add(AIFunctionFactory.Create(sp.GetRequiredService<IManualStore>().SearchManuals));

@@ -1,5 +1,3 @@
-
-
 var builder = DistributedApplication.CreateBuilder(args);
 
 var openai = builder.AddOpenAI("openai");

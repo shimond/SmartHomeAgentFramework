@@ -21,7 +21,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceDefaults();
 
 ChatClientSetup.RegisterAIClient(builder);
-builder.Services.AddSingleton<HomeState>();
+builder.Services.AddSingleton<IHomeGateway, InMemoryHome>();
 
 var prefPath = Path.Combine(AppContext.BaseDirectory, "preferences.json");
 builder.Services.AddSingleton(new PreferenceStore(prefPath));
@@ -29,7 +29,7 @@ builder.Services.AddSingleton(new PreferenceStore(prefPath));
 builder.AddAIAgent("concierge-with-memory", (sp, key) =>
 {
     var chat = sp.GetRequiredService<IChatClient>();
-    var state = sp.GetRequiredService<HomeState>();
+    var state = sp.GetRequiredService<IHomeGateway>();
     var prefs = new PreferenceTools(sp.GetRequiredService<PreferenceStore>());
 
     var tools = Agents.ToolsFor(state);

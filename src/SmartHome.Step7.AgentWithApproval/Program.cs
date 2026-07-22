@@ -25,7 +25,7 @@ builder.AddServiceDefaults();
 
 const string ActivitySourceName = "SmartHome";
 ChatClientSetup.RegisterAIClient(builder);
-builder.Services.AddKeyedChatClient("telemtry",sp =>
+builder.Services.AddKeyedChatClient("telemetry",sp =>
 {
     var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
     var currentClient = sp.GetRequiredService<IChatClient>();
@@ -36,12 +36,12 @@ builder.Services.AddKeyedChatClient("telemtry",sp =>
         .Build();
 });
 
-builder.Services.AddSingleton<HomeState>();
+builder.Services.AddSingleton<IHomeGateway, InMemoryHome>();
 
 builder.AddAIAgent("concierge-with-approval", (sp, key) =>
 {
-    var chat = sp.GetRequiredKeyedService<IChatClient>("telemtry");
-    var state = sp.GetRequiredService<HomeState>();
+    var chat = sp.GetRequiredKeyedService<IChatClient>("telemetry");
+    var state = sp.GetRequiredService<IHomeGateway>();
     return new ChatClientAgent(chat, Agents.HomeAssistanceInstructions, key, null, Agents.ToolsFor(state));
 });
 
